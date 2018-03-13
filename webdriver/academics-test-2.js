@@ -22,6 +22,7 @@ const util = require('./utilities');
   let page;
   let builder;
   let screen_sizes;
+  let heading_1;
   
   builder = new webdriver.Builder().forBrowser('chrome');
   driver = await builder.build();
@@ -36,7 +37,11 @@ const util = require('./utilities');
   // Submit the form that contains passwordInput
   await passwordInput.submit();
 
-  await driver.sleep(10000);
+  // Wait for the actual Academics page to load
+  heading_1 = await driver.wait(until.elementLocated(By.css('h1.feature__heading')), 10000, 
+    'Timed out while waiting to locate h1.feature__heading');
+  await driver.wait(until.elementTextIs(heading_1, 'Academics'), 10000,
+    `Timed out for waiting for the h1's text to be 'Academics'`);
 
   // Setup page object: get references to WebElements that we will test
   page = {
@@ -95,30 +100,42 @@ const util = require('./utilities');
       height: screen_size.height,
     });
 
-    await testBookmarks(page.sampleStudentScheduleLink);
+    await testBookmarks(page.sampleStudentScheduleLink, driver);
   }
 
   await driver.quit();
 })();
 
 async function testBookmarks(sampleStudentScheduleLink, driver) {
-  var block_name = 'bookmark';
-  var label = 0;
+  let block_name = 'sample schedule link';
+  let window_start_scroll_position;
+  let window_end_scroll_position;
   
-  console.log(colors.yellow(`Testing ${block_name}: ${label}\n`));
+  console.log(colors.yellow(`Testing ${block_name}\n`));
   
   try {
+
+    // Get the start scroll position of the window
+    window_start_scroll_position = await driver.executeScript(function() {
+      return jQuery(window).scrollTop();
+    });
+
     // Click on the link
     await sampleStudentScheduleLink.click();
 
-    driver.sleep(10000);
-    
-    //expect(icons).to.have.lengthOf(1);
+    // Wait the transition time for the smooth scroll
+    driver.sleep(1500);
+
+    window_end_scroll_position = await driver.executeScript(function() {
+      return jQuery(window).scrollTop();
+    });
+
+    expect(window_start_scroll_position).to.not.equal(window_end_scroll_position);
+    console.log(colors.green(`\tVerified that the window scroll position changes after you click the link.\n`));
+
   } catch(error) {
     printErrorAndExit(error);
   }
-
-  console.log(colors.green(`Clicking the ${block_name} scrolled the page down to the top of the element that was the target of the bookmark.\n`));
 
 }
 
